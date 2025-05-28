@@ -43,6 +43,8 @@ def infer(input_image, prompt, seed=42, randomize_seed=False, guidance_scale=2.5
         image=input_image_resized, # Use the resized image
         prompt=prompt,
         guidance_scale=guidance_scale,
+        width=new_width,
+        height=new_height,
         generator=torch.Generator().manual_seed(seed),
     ).images[0]
     return image, seed
