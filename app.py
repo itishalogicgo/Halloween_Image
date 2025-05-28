@@ -27,20 +27,20 @@ def infer(input_image, prompt, seed=42, randomize_seed=False, guidance_scale=2.5
         seed = random.randint(0, MAX_SEED)
         
     input_image = input_image.convert("RGB")
-
     original_width, original_height = input_image.size
     
     if original_width >= original_height:
         new_width = 1024
         new_height = int(original_height * (new_width / original_width))
+        new_height = round(new_height / 64) * 64
     else:
         new_height = 1024
         new_width = int(original_width * (new_height / original_height))
+        new_width = round(new_width / 64) * 64
     
     input_image_resized = input_image.resize((new_width, new_height), Image.LANCZOS)
-
     image = pipe(
-        image=input_image_resized, # Use the resized image
+        image=input_image_resized, 
         prompt=prompt,
         guidance_scale=guidance_scale,
         width=new_width,
