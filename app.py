@@ -56,14 +56,23 @@ def infer(input_image, prompt, seed=42, randomize_seed=False, guidance_scale=2.5
     """
     if randomize_seed:
         seed = random.randint(0, MAX_SEED)
-        
-    input_image = input_image.convert("RGB")
-    image = pipe(
-        image=input_image, 
-        prompt=prompt,
-        guidance_scale=guidance_scale,
-        generator=torch.Generator().manual_seed(seed),
-    ).images[0]
+    
+    if input_image:
+        input_image = input_image.convert("RGB")
+        image = pipe(
+            image=input_image, 
+            prompt=prompt,
+            guidance_scale=guidance_scale,
+            num_inference_steps=steps,
+            generator=torch.Generator().manual_seed(seed),
+        ).images[0]
+    else:
+        image = pipe(
+            prompt=prompt,
+            guidance_scale=guidance_scale,
+            num_inference_steps=steps,
+            generator=torch.Generator().manual_seed(seed),
+        ).images[0]
     return image, seed, gr.update(visible=True)
 
 css="""
