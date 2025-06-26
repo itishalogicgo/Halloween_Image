@@ -4,14 +4,13 @@ import spaces
 import torch
 import random
 from PIL import Image
-from pipeline_flux_kontext import FluxKontextPipeline
-from diffusers import FluxTransformer2DModel
+
+from diffusers import FluxKontextPipeline
 from diffusers.utils import load_image
-from huggingface_hub import hf_hub_download
 
 MAX_SEED = np.iinfo(np.int32).max
 
-pipe = FluxKontextPipeline.from_pretrained("black-forest-labs/FLUX.1-Kontext-dev", revision="refs/pr/2", torch_dtype=torch.bfloat16).to("cuda")
+pipe = FluxKontextPipeline.from_pretrained("black-forest-labs/FLUX.1-Kontext-dev", torch_dtype=torch.bfloat16).to("cuda")
 
 @spaces.GPU
 def infer(input_image, prompt, seed=42, randomize_seed=False, guidance_scale=2.5, steps=28, progress=gr.Progress(track_tqdm=True)):
