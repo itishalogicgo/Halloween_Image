@@ -62,6 +62,8 @@ def infer(input_image, prompt, seed=42, randomize_seed=False, guidance_scale=2.5
             image=input_image, 
             prompt=prompt,
             guidance_scale=guidance_scale,
+            width = input_image.size[0],
+            height = input_image.size[1],
             num_inference_steps=steps,
             generator=torch.Generator().manual_seed(seed),
         ).images[0]
