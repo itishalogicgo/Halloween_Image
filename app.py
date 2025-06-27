@@ -74,7 +74,12 @@ def infer(input_image, prompt, seed=42, randomize_seed=False, guidance_scale=2.5
             num_inference_steps=steps,
             generator=torch.Generator().manual_seed(seed),
         ).images[0]
-    return image, seed, gr.update(visible=True)
+    return image, seed, gr.Button(visible=True)
+
+@spaces.GPU
+def infer_example(input_image, prompt):
+    image, seed, _ = infer(input_image, prompt)
+    return image, seed
 
 css="""
 #col-container {
@@ -133,7 +138,19 @@ Image editing and manipulation model guidance-distilled from FLUX.1 Kontext [pro
                 result = gr.Image(label="Result", show_label=False, interactive=False)
                 reuse_button = gr.Button("Reuse this image", visible=False)
         
-        
+            
+        examples = gr.Examples(
+            examples=[
+                ["flowers.png", "turn the flowers into sunflowers"],
+                ["monster.png", "make this monster ride a skateboard on the beach"],
+                ["cat.png", "make this cat happy"]
+            ],
+            inputs=[input_image, prompt],
+            outputs=[result, seed],
+            fn=infer_example,
+            cache_examples="lazy"
+        )
+            
     gr.on(
         triggers=[run_button.click, prompt.submit],
         fn = infer,
