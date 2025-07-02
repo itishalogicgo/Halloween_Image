@@ -74,7 +74,7 @@ def infer(input_image, prompt, seed=42, randomize_seed=False, guidance_scale=2.5
             num_inference_steps=steps,
             generator=torch.Generator().manual_seed(seed),
         ).images[0]
-    return image, seed, gr.Button(visible=True)
+    return (input_image, image), seed, gr.Button(visible=True)
 
 @spaces.GPU
 def infer_example(input_image, prompt):
@@ -135,7 +135,7 @@ Image editing and manipulation model guidance-distilled from FLUX.1 Kontext [pro
                     )
                     
             with gr.Column():
-                result = gr.Image(label="Result", show_label=False, interactive=False)
+                result = gr.ImageSlider(label="Result", show_label=False, interactive=False)
                 reuse_button = gr.Button("Reuse this image", visible=False)
         
             
