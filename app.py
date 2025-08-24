@@ -1,3 +1,8 @@
+# PyTorch 2.8 (temporary hack)
+import os
+os.system('pip install --upgrade --pre --extra-index-url https://download.pytorch.org/whl/nightly/cu126 "torch<2.9" spaces')
+
+# Actual demo code
 import gradio as gr
 import numpy as np
 import spaces
@@ -8,9 +13,12 @@ from PIL import Image
 from diffusers import FluxKontextPipeline
 from diffusers.utils import load_image
 
+from optimization import optimize_pipeline_
+
 MAX_SEED = np.iinfo(np.int32).max
 
 pipe = FluxKontextPipeline.from_pretrained("black-forest-labs/FLUX.1-Kontext-dev", torch_dtype=torch.bfloat16).to("cuda")
+optimize_pipeline_(pipe, image=Image.new("RGB", (512, 512)), prompt='prompt')
 
 @spaces.GPU
 def infer(input_image, prompt, seed=42, randomize_seed=False, guidance_scale=2.5, steps=28, progress=gr.Progress(track_tqdm=True)):
