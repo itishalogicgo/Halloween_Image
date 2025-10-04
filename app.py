@@ -9,15 +9,18 @@ import spaces
 import torch
 import random
 from PIL import Image
-
 from diffusers import FluxKontextPipeline
 from diffusers.utils import load_image
 
 from optimization import optimize_pipeline_
 
 MAX_SEED = np.iinfo(np.int32).max
+pipe = FluxKontextPipeline.from_pretrained(
+    "black-forest-labs/FLUX.1-Kontext-dev",
+    torch_dtype=torch.bfloat16,
+    use_auth_token=os.getenv("HF_TOKEN")  # make sure HF_TOKEN is set in env
+).to("cuda")
 
-pipe = FluxKontextPipeline.from_pretrained("black-forest-labs/FLUX.1-Kontext-dev", torch_dtype=torch.bfloat16).to("cuda")
 optimize_pipeline_(pipe, image=Image.new("RGB", (512, 512)), prompt='prompt')
 
 @spaces.GPU
