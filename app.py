@@ -176,60 +176,69 @@
 
 # demo.launch(mcp_server=True)
 # app.py
+# app.py
 import os
+
+# ----------------------------------------------------------------------
+# CUDA memory configuration (prevents fragmentation on L4)
+# ----------------------------------------------------------------------
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import gradio as gr
 import numpy as np
-import spaces
 import torch
 import random
 from PIL import Image
+import spaces
 from diffusers import FluxKontextPipeline
 
-# from optimization import optimize_pipeline_
-
-# ---------------------------
-# Runtime & dtype/device setup
-# ---------------------------
-DTYPE = torch.bfloat16
+# ----------------------------------------------------------------------
+# Runtime settings
+# ----------------------------------------------------------------------
+DTYPE = torch.float16                     # use float16 to save VRAM
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
 MAX_SEED = np.iinfo(np.int32).max
 
-# ---------------------------
-# Load pipeline (bfloat16 on L4)
-# ---------------------------
+# ----------------------------------------------------------------------
+# Load FLUX.1-Kontext-dev pipeline (optimized for 24 GB L4 GPU)
+# ----------------------------------------------------------------------
 pipe = FluxKontextPipeline.from_pretrained(
     "black-forest-labs/FLUX.1-Kontext-dev",
     torch_dtype=DTYPE,
-    use_auth_token=os.getenv("HF_TOKEN"),  # set this in Space Secrets
-).to(DEVICE)
+    low_cpu_mem_usage=True,
+    use_safetensors=True,
+    device_map="auto",                    # automatic layer offloading
+    use_auth_token=os.getenv("HF_TOKEN"), # set this in Space secrets
+)
 
-# Memory-friendly toggles for 24 GB L4
+# Enable lightweight memory helpers
 try:
     pipe.enable_attention_slicing()
     pipe.enable_vae_slicing()
     pipe.enable_vae_tiling()
-except Exception:
-    pass
+except Exception as e:
+    print(f"[warn] could not enable slicing/tiling: {e}")
 
-# ---------------------------
-# Optional: guarded optimization
-# ---------------------------
-# try:
-#     # small dummy warmup to capture shapes
-#     optimize_pipeline_(pipe, image=Image.new("RGB", (512, 512)), prompt="prompt")
-# except Exception as e:
-#     # Don't kill the Space if compile fails – just log and continue
-#     print(f"[warn] optimize_pipeline_ skipped: {e}")
-
+# ----------------------------------------------------------------------
+# Core inference function
+# ----------------------------------------------------------------------
 @spaces.GPU
-def infer(input_image, prompt, seed=42, randomize_seed=False,
-          guidance_scale=2.5, steps=28, progress=gr.Progress(track_tqdm=True)):
-
+def infer(
+    input_image,
+    prompt,
+    seed=42,
+    randomize_seed=False,
+    guidance_scale=2.5,
+    steps=28,
+    progress=gr.Progress(track_tqdm=True)
+):
+    """
+    Perform contextual image editing using the FLUX.1-Kontext model.
+    """
     if randomize_seed:
         seed = random.randint(0, MAX_SEED)
 
-    gen = torch.Generator(device=DEVICE).manual_seed(seed)
+    generator = torch.Generator(device=DEVICE).manual_seed(seed)
 
     if input_image:
         input_image = input_image.convert("RGB")
@@ -240,70 +249,114 @@ def infer(input_image, prompt, seed=42, randomize_seed=False,
             width=input_image.size[0],
             height=input_image.size[1],
             num_inference_steps=steps,
-            generator=gen,
+            generator=generator,
         ).images[0]
     else:
         image = pipe(
             prompt=prompt,
             guidance_scale=guidance_scale,
             num_inference_steps=steps,
-            generator=gen,
+            generator=generator,
         ).images[0]
 
     return image, seed, gr.Button(visible=True)
 
+# ----------------------------------------------------------------------
+# Example inference for sample inputs
+# ----------------------------------------------------------------------
 @spaces.GPU
 def infer_example(input_image, prompt):
     image, seed, _ = infer(input_image, prompt)
     return image, seed
 
+# ----------------------------------------------------------------------
+# Gradio UI layout (kept minimal for API usage)
+# ----------------------------------------------------------------------
 css = """
-#col-container { margin: 0 auto; max-width: 960px; }
+#col-container {
+    margin: 0 auto;
+    max-width: 960px;
+}
 """
 
 with gr.Blocks(css=css) as demo:
     with gr.Column(elem_id="col-container"):
         gr.Markdown(
-            "# FLUX.1 Kontext [dev]\n"
-            "Image editing and manipulation model distilled from Kontext [pro]."
+            """
+            # FLUX.1 Kontext [dev]
+            Image editing and manipulation model distilled from FLUX.1 Kontext [pro].  
+            [[Blog]](https://bfl.ai/announcements/flux-1-kontext-dev) • [[Model]](https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev)
+            """
         )
+
         with gr.Row():
+            # Left side (input + controls)
             with gr.Column():
-                input_image = gr.Image(label="Upload the image for editing", type="pil")
+                input_image = gr.Image(label="Upload image for editing", type="pil")
+
                 with gr.Row():
                     prompt = gr.Text(
-                        label="Prompt", show_label=False, max_lines=1,
-                        placeholder="Enter instructions (e.g., 'Remove glasses')",
+                        label="Prompt",
+                        show_label=False,
+                        max_lines=1,
+                        placeholder="Enter your edit (e.g., 'Add a hat', 'Remove glasses')",
                         container=False,
                     )
                     run_button = gr.Button("Run", scale=0)
+
                 with gr.Accordion("Advanced Settings", open=False):
-                    seed = gr.Slider(label="Seed", minimum=0, maximum=MAX_SEED, step=1, value=0)
+                    seed = gr.Slider(
+                        label="Seed",
+                        minimum=0,
+                        maximum=MAX_SEED,
+                        step=1,
+                        value=0,
+                    )
                     randomize_seed = gr.Checkbox(label="Randomize seed", value=True)
-                    guidance_scale = gr.Slider(label="Guidance Scale", minimum=1, maximum=10, step=0.1, value=2.5)
-                    steps = gr.Slider(label="Steps", minimum=1, maximum=30, value=28, step=1)
+                    guidance_scale = gr.Slider(
+                        label="Guidance Scale",
+                        minimum=1,
+                        maximum=10,
+                        step=0.1,
+                        value=2.5,
+                    )
+                    steps = gr.Slider(
+                        label="Steps",
+                        minimum=1,
+                        maximum=30,
+                        value=28,
+                        step=1,
+                    )
+
+            # Right side (output)
             with gr.Column():
                 result = gr.Image(label="Result", show_label=False, interactive=False)
                 reuse_button = gr.Button("Reuse this image", visible=False)
 
+        # Example gallery
         examples = gr.Examples(
             examples=[
                 ["flowers.png", "turn the flowers into sunflowers"],
                 ["monster.png", "make this monster ride a skateboard on the beach"],
-                ["cat.png", "make this cat happy"]
+                ["cat.png", "make this cat happy"],
             ],
             inputs=[input_image, prompt],
             outputs=[result, seed],
             fn=infer_example,
-            cache_examples="lazy"
+            cache_examples="lazy",
         )
 
+    # Button events
     gr.on(
         triggers=[run_button.click, prompt.submit],
         fn=infer,
         inputs=[input_image, prompt, seed, randomize_seed, guidance_scale, steps],
-        outputs=[result, seed, reuse_button]
+        outputs=[result, seed, reuse_button],
     )
     reuse_button.click(fn=lambda image: image, inputs=[result], outputs=[input_image])
 
+# ----------------------------------------------------------------------
+# Launch the Space / API server
+# ----------------------------------------------------------------------
 demo.launch(mcp_server=True)
+
