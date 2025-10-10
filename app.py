@@ -207,7 +207,7 @@ pipe = FluxKontextPipeline.from_pretrained(
     torch_dtype=DTYPE,
     low_cpu_mem_usage=True,
     use_safetensors=True,
-    device_map="auto",                    # automatic layer offloading
+    device_map="balanced",                    # automatic layer offloading
     use_auth_token=os.getenv("HF_TOKEN"), # set this in Space secrets
 )
 
