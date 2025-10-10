@@ -4,9 +4,10 @@
 #safetensors
 #sentencepiece
 
-# core
-torch==2.5.1+cu124 --index-url https://download.pytorch.org/whl/cu124
-# if you later need torchvision/torchaudio, pin matching +cu124 builds
+#core
+torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+
+#if you later need torchvision/torchaudio, pin matching +cu124 builds
 
 transformers>=4.44.0
 git+https://github.com/huggingface/diffusers.git
