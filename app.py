@@ -185,7 +185,7 @@ import random
 from PIL import Image
 from diffusers import FluxKontextPipeline
 
-from optimization import optimize_pipeline_
+# from optimization import optimize_pipeline_
 
 # ---------------------------
 # Runtime & dtype/device setup
@@ -215,12 +215,12 @@ except Exception:
 # ---------------------------
 # Optional: guarded optimization
 # ---------------------------
-try:
-    # small dummy warmup to capture shapes
-    optimize_pipeline_(pipe, image=Image.new("RGB", (512, 512)), prompt="prompt")
-except Exception as e:
-    # Don't kill the Space if compile fails – just log and continue
-    print(f"[warn] optimize_pipeline_ skipped: {e}")
+# try:
+#     # small dummy warmup to capture shapes
+#     optimize_pipeline_(pipe, image=Image.new("RGB", (512, 512)), prompt="prompt")
+# except Exception as e:
+#     # Don't kill the Space if compile fails – just log and continue
+#     print(f"[warn] optimize_pipeline_ skipped: {e}")
 
 @spaces.GPU
 def infer(input_image, prompt, seed=42, randomize_seed=False,
