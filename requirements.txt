@@ -4,14 +4,25 @@
 #safetensors
 #sentencepiece
 
-#core
-torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 
-#if you later need torchvision/torchaudio, pin matching +cu124 builds
 
+
+--extra-index-url https://download.pytorch.org/whl/cu124
+
+# Stable PyTorch build (CUDA 12.4 wheel)
+torch==2.5.1
+
+# Core Hugging Face / Diffusers stack
 transformers>=4.44.0
 git+https://github.com/huggingface/diffusers.git
 accelerate>=0.33.0
 safetensors>=0.4.5
 sentencepiece>=0.2.0
+
+# Gradio for Spaces runtime / API UI
 gradio>=4.43.0
+
+# Optional utilities (often pre-installed on Spaces)
+numpy>=1.26.0
+Pillow>=10.2.0
+
