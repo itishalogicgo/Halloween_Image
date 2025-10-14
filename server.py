@@ -88,7 +88,7 @@ def garment_list(authorization: Optional[str] = None):
 
 @app.get("/preview/garment/{filename}")
 def preview_garment(filename: str, authorization: Optional[str] = None):
-    _auth(authorization)
+    # _auth(authorization)
     file_path = GARMENT_OUTPUT_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
@@ -97,7 +97,7 @@ def preview_garment(filename: str, authorization: Optional[str] = None):
 
 @app.get("/download/garment/{filename}")
 def download_garment(filename: str, authorization: Optional[str] = None):
-    _auth(authorization)
+    # _auth(authorization)
     file_path = GARMENT_OUTPUT_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
@@ -111,7 +111,7 @@ async def garment_transform(
     garment_filename: Optional[str] = Form(None),
     garment_file: Optional[UploadFile] = File(None),
 ):
-    _auth(authorization)
+    # _auth(authorization)
 
     # If custom garment file provided, save it and use as the chosen garment
     if garment_file is not None:
@@ -143,7 +143,7 @@ async def upload_template(
     file: UploadFile = File(...),
     filename: Optional[str] = Form(None),
 ):
-    _auth(authorization)
+    # _auth(authorization)
     # Save uploaded file to templates directory
     target_filename = filename or file.filename
     if not target_filename:
@@ -162,7 +162,7 @@ async def halloween_transform(
     file: UploadFile = File(...),
     prompt: Optional[str] = Form(None),
 ):
-    _auth(authorization)
+    # _auth(authorization)
     # Just save uploaded file as a stub response
     dst = HALLOWEEN_OUTPUT_DIR / (os.path.splitext(file.filename or "out")[0] + ".webp")
     with dst.open("wb") as f:
