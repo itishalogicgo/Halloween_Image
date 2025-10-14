@@ -13,6 +13,21 @@ from diffusers import FluxKontextPipeline
 from diffusers.utils import load_image
 
 from optimization import optimize_pipeline_
+import glob
+
+# Preset Halloween themes that auto-fill the prompt when selected
+THEME_PRESETS = {
+    "Witch costume": "transform the person into a witch wearing a classic black hat and robe, add a moonlit night background",
+    "Vampire": "make the person look like a vampire with pale skin, red eyes, and a dark cape, gothic castle background",
+    "Ghost": "turn the person into a translucent ghost with a soft glow and misty background",
+    "Zombie": "turn the person into a zombie with subtle decayed features and eerie lighting",
+    "Skeleton": "stylize the person as a glowing skeleton with neon bones, dark background",
+    "Pumpkin spirit": "add a pumpkin-head mask and autumn leaves background with warm cinematic lighting",
+    "Monster": "turn the person into a friendly halloween monster with vibrant colors",
+    "Pirate": "transform the person into a pirate with hat and eyepatch, wooden ship deck background",
+    "Fairy": "make the person a halloween fairy with glowing wings and sparkly particles",
+    "Cyberpunk": "apply a neon cyberpunk halloween theme with glowing accents and city night backdrop",
+}
 
 MAX_SEED = np.iinfo(np.int32).max
 pipe = FluxKontextPipeline.from_pretrained(
@@ -116,6 +131,13 @@ Image editing and manipulation model guidance-distilled from FLUX.1 Kontext [pro
                         placeholder="Enter your prompt for editing (e.g., 'Remove glasses', 'Add a hat')",
                         container=False,
                     )
+                    theme_dropdown = gr.Dropdown(
+                        label="Theme",
+                        choices=list(THEME_PRESETS.keys()),
+                        value=None,
+                        allow_custom_value=False,
+                        scale=0,
+                    )
                     run_button = gr.Button("Run", scale=0)
                 with gr.Accordion("Advanced Settings", open=False):
                     
@@ -150,12 +172,18 @@ Image editing and manipulation model guidance-distilled from FLUX.1 Kontext [pro
                 reuse_button = gr.Button("Reuse this image", visible=False)
         
             
+        # Dynamically gather example images from current folder and 'Halloween Dress' subfolder
+        image_patterns = ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp")
+        example_files: list[str] = []
+        for pattern in image_patterns:
+            example_files.extend(glob.glob(pattern))
+            example_files.extend(glob.glob(os.path.join("Halloween Dress", pattern)))
+        example_files = sorted(dict.fromkeys(example_files))  # de-duplicate while preserving order
+        default_prompt = "make it spooky for halloween"
+        dynamic_examples = [[path, default_prompt] for path in example_files]
+
         examples = gr.Examples(
-            examples=[
-                ["flowers.png", "turn the flowers into sunflowers"],
-                ["monster.png", "make this monster ride a skateboard on the beach"],
-                ["cat.png", "make this cat happy"]
-            ],
+            examples=dynamic_examples,
             inputs=[input_image, prompt],
             outputs=[result, seed],
             fn=infer_example,
@@ -167,6 +195,16 @@ Image editing and manipulation model guidance-distilled from FLUX.1 Kontext [pro
         fn = infer,
         inputs = [input_image, prompt, seed, randomize_seed, guidance_scale, steps],
         outputs = [result, seed, reuse_button]
+    )
+    
+    def _apply_theme(theme_name: str):
+        # Update the prompt textbox with the preset prompt corresponding to the selected theme
+        return gr.update(value=THEME_PRESETS.get(theme_name, ""))
+
+    theme_dropdown.change(
+        fn=_apply_theme,
+        inputs=[theme_dropdown],
+        outputs=[prompt]
     )
     reuse_button.click(
         fn = lambda image: image,

@@ -1,0 +1,206 @@
+Halloween + Virtual Try-On API Documentation
+Base URL:
+https://halloween-image-generation.onrender.com
+Authentication:
+ All protected endpoints require Bearer Token:
+Authorization: Bearer logicgo@123
+
+
+1️⃣ List Available Garments
+Endpoint:
+GET /garment/list
+Description:
+ Retrieve the list of predefined garments for virtual try-on.
+Headers:
+Authorization: Bearer logicgo@123
+Request Example:
+curl -X GET "https://halloween-image-generation.onrender.com/garment/list" \
+  -H "Authorization: Bearer logicgo@123"
+Response Example:
+{
+  "garments": [
+    {
+      "filename": "vampire_dress.jpg",
+      "url": "/garment_input/vampire_dress.jpg"
+    },
+    {
+      "filename": "witch_dress.webp",
+      "url": "/garment_input/witch_dress.webp"
+    },
+    {
+      "filename": "skull_dress.jpg",
+      "url": "/garment_input/skull_dress.jpg"
+    }
+  ]
+}
+
+2️⃣ Garment Transform (Virtual Try-On)
+Endpoint:
+POST /garment/transform
+
+Description:
+ Uploads a source image and applies a selected garment from the predefined list.
+Headers:
+Authorization: Bearer logicgo@123
+Content-Type: multipart/form-data
+
+Form Data / Parameters:
+Field
+Type
+Required
+Description
+source_file
+file
+Yes
+The source image of the person
+garment_filename
+string
+Yes
+Filename of the garment from /garment/list
+
+Request Example (curl):
+curl -X POST "https://halloween-image-generation.onrender.com/garment/transform" \
+  -H "Authorization: Bearer logicgo@123" \
+  -F "source_file=@/path/to/person.jpg" \
+  -F "garment_filename=vampire_dress.jpg"
+Response Example:
+{
+  "status": "success",
+  "preview_url": "/garment_output/5c3a1b6f-9c8f-4b2e-814f-d1a2b3c4d5e6.webp",
+  "filename": "5c3a1b6f-9c8f-4b2e-814f-d1a2b3c4d5e6.webp"
+}
+
+
+3️⃣ Preview Garment Result
+Endpoint:
+GET /preview/garment/{filename}
+
+Description:
+ Preview the generated garment image.
+Headers:
+Authorization: Bearer logicgo@123
+
+Path Parameter:
+Parameter
+Type
+Required
+Description
+filename
+string
+Yes
+Filename returned in /garment/transform
+
+Request Example:
+curl -X GET "https://halloween-image-generation.onrender.com/preview/garment/5c3a1b6f-9c8f-4b2e-814f-d1a2b3c4d5e6.webp" \
+  -H "Authorization: Bearer logicgo@123"
+
+Response:
+Returns image (image/webp)
+
+
+
+
+
+
+
+4️⃣ Download Garment Result
+Endpoint:
+GET /download/garment/{filename}
+
+Description:
+ Download the final garment image file.
+Headers:
+Authorization: Bearer logicgo@123
+
+Path Parameter:
+Parameter
+Type
+Required
+Description
+filename
+string
+Yes
+Filename returned in /garment/transform
+
+Request Example:
+curl -X GET "https://halloween-image-generation.onrender.com/download/garment/5c3a1b6f-9c8f-4b2e-814f-d1a2b3c4d5e6.webp" \
+  -H "Authorization: Bearer logicgo@123" \
+  -o "my_output_image.webp"
+
+Response:
+Returns file (application/octet-stream)
+
+
+
+
+
+
+
+
+
+5️⃣ Health Check
+Endpoint:
+GET /health
+
+Description:
+ Check if the API and the connected Gradio services are up.
+Headers:
+None
+Request Example:
+curl -X GET "https://halloween-image-generation.onrender.com/health"
+
+Response Example:
+{
+  "status": "healthy",
+  "services": {
+    "halloween": true,
+    "garment": true
+  }
+}
+
+
+
+
+
+
+
+
+
+6️⃣ Halloween Image Transform
+Endpoint:
+POST /halloween/transform
+
+Description:
+ Transforms an uploaded image into a Halloween-themed avatar based on the prompt.
+Headers:
+Authorization: Bearer logicgo@123
+Content-Type: multipart/form-data
+
+Form Data / Parameters:
+Field
+Type
+Required
+Description
+file
+file
+Yes
+The source image to transform
+prompt
+string
+No
+Prompt describing the Halloween effect (default: vampire-themed example)
+
+Request Example (curl):
+curl -X POST "https://halloween-image-generation.onrender.com/halloween/transform" \
+  -H "Authorization: Bearer logicgo@123" \
+  -F "file=@/path/to/input.jpg" \
+  -F "prompt=Make the person look like a ghost with glowing eyes"
+
+Response Example:
+{
+  "status": "success",
+  "url": "/halloween_output/3e2f1c6b-abc1-4c2b-89a1-d3f4a6c7b8c9.webp"
+}
+
+
+
