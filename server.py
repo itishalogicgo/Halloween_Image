@@ -135,6 +135,25 @@ async def garment_transform(
     return JSONResponse({"status": "success", "preview_url": f"/garment_output/{filename}", "filename": filename})
 
 
+@app.post("/upload-template")
+async def upload_template(
+    authorization: Optional[str] = None,
+    file: UploadFile = File(...),
+    filename: Optional[str] = Form(None),
+):
+    _auth(authorization)
+    # Save uploaded file to templates directory
+    target_filename = filename or file.filename
+    if not target_filename:
+        raise HTTPException(status_code=400, detail="filename required")
+    
+    dst = GARMENT_TEMPLATES_DIR / target_filename
+    with dst.open("wb") as f:
+        while chunk := await file.read(1024 * 1024):
+            f.write(chunk)
+    return {"status": "success", "filename": target_filename, "url": f"/garment_templates/{target_filename}"}
+
+
 @app.post("/halloween/transform")
 async def halloween_transform(
     authorization: Optional[str] = None,
