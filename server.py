@@ -5,16 +5,19 @@ from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 
 API_TOKEN = os.getenv("API_TOKEN", "logicgo@123")
 GARMENT_INPUT_DIR = Path("garment_input")
+GARMENT_TEMPLATES_DIR = Path("Halloween Dress")  # local recommendations folder
 GARMENT_OUTPUT_DIR = Path("garment_output")
 HALLOWEEN_OUTPUT_DIR = Path("halloween_output")
 
 GARMENT_INPUT_DIR.mkdir(exist_ok=True)
 GARMENT_OUTPUT_DIR.mkdir(exist_ok=True)
 HALLOWEEN_OUTPUT_DIR.mkdir(exist_ok=True)
+GARMENT_TEMPLATES_DIR.mkdir(exist_ok=True)
 
 
 def _auth(authorization: Optional[str]):
@@ -36,6 +39,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve local recommendations from /garment_templates/<filename>
+app.mount("/garment_templates", StaticFiles(directory=str(GARMENT_TEMPLATES_DIR)), name="garment_templates")
 
 THEMES = [
     {"name": "Witch costume", "prompt": "transform the person into a witch wearing a classic black hat and robe, add a moonlit night background"},
@@ -67,6 +73,11 @@ def garment_list(authorization: Optional[str] = None):
     _auth(authorization)
     exts = {".png", ".jpg", ".jpeg", ".webp"}
     items = []
+    # Prefer local recommendations from 'Halloween Dress' and expose via /garment_templates
+    for p in sorted(GARMENT_TEMPLATES_DIR.iterdir()):
+        if p.is_file() and p.suffix.lower() in exts:
+            items.append({"filename": p.name, "url": f"/garment_templates/{p.name}"})
+    # Fallback: also include any files from garment_input for compatibility
     for p in sorted(GARMENT_INPUT_DIR.iterdir()):
         if p.is_file() and p.suffix.lower() in exts:
             items.append({"filename": p.name, "url": f"/garment_input/{p.name}"})
