@@ -3,6 +3,9 @@ git+https://github.com/huggingface/diffusers.git
 accelerate
 safetensors
 sentencepiece
+fastapi
+uvicorn
+python-multipart
 
 
 

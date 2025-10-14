@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: halloween-image-api
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: |
+      python3 -m pip install --upgrade pip
+      python3 -m pip install -r requirements.txt
+    startCommand: python3 -m uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: API_TOKEN
+        value: logicgo@123
+    disk:
+      name: data
+      mountPath: /opt/render/project/src
+
