@@ -37,10 +37,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+THEMES = [
+    {"name": "Witch costume", "prompt": "transform the person into a witch wearing a classic black hat and robe, add a moonlit night background"},
+    {"name": "Vampire", "prompt": "make the person look like a vampire with pale skin, red eyes, and a dark cape, gothic castle background"},
+    {"name": "Ghost", "prompt": "turn the person into a translucent ghost with a soft glow and misty background"},
+    {"name": "Zombie", "prompt": "turn the person into a zombie with subtle decayed features and eerie lighting"},
+    {"name": "Skeleton", "prompt": "stylize the person as a glowing skeleton with neon bones, dark background"},
+    {"name": "Pumpkin spirit", "prompt": "add a pumpkin-head mask and autumn leaves background with warm cinematic lighting"},
+    {"name": "Monster", "prompt": "turn the person into a friendly halloween monster with vibrant colors"},
+    {"name": "Pirate", "prompt": "transform the person into a pirate with hat and eyepatch, wooden ship deck background"},
+    {"name": "Fairy", "prompt": "make the person a halloween fairy with glowing wings and sparkly particles"},
+    {"name": "Cyberpunk", "prompt": "apply a neon cyberpunk halloween theme with glowing accents and city night backdrop"},
+]
+
 
 @app.get("/health")
 def health():
     return {"status": "healthy", "services": {"halloween": True, "garment": True}}
+
+
+@app.get("/themes")
+def themes(authorization: Optional[str] = None):
+    _auth(authorization)
+    return {"themes": THEMES}
 
 
 @app.get("/garment/list")
