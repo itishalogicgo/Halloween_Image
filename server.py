@@ -13,10 +13,19 @@ from pymongo import MongoClient
 API_TOKEN = os.getenv("API_TOKEN", "logicgo@123")
 MONGODB_URI = "mongodb+srv://harilogicgo_db_user:g6Zz4M2xWpr3B2VM@cluster0.bnzjt7f.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
-# MongoDB connection
-client = MongoClient(MONGODB_URI)
-db = client.halloween_db
-garments_collection = db.garments
+# MongoDB connection with error handling
+try:
+    client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+    db = client.halloween_db
+    garments_collection = db.garments
+    # Test the connection
+    client.admin.command('ping')
+    print("MongoDB connection successful")
+except Exception as e:
+    print(f"MongoDB connection failed: {e}")
+    client = None
+    db = None
+    garments_collection = None
 
 GARMENT_INPUT_DIR = Path("garment_input")
 GARMENT_TEMPLATES_DIR = Path("Halloween Dress")  # local recommendations folder
@@ -83,25 +92,32 @@ def garment_list(authorization: Optional[str] = None):
     # Temporarily disable auth for testing
     # _auth(authorization)
     
-    # Get garments from MongoDB
     items = []
-    for doc in garments_collection.find({}, {"filename": 1, "url": 1}):
-        items.append({
-            "filename": doc["filename"],
-            "url": doc["url"]
-        })
+    
+    # Try to get garments from MongoDB if available
+    if garments_collection is not None:
+        try:
+            for doc in garments_collection.find({}, {"filename": 1, "url": 1}):
+                items.append({
+                    "filename": doc["filename"],
+                    "url": doc["url"]
+                })
+        except Exception as e:
+            print(f"Error reading from MongoDB: {e}")
     
     # If no items in MongoDB, fallback to local files
     if not items:
         exts = {".png", ".jpg", ".jpeg", ".webp"}
         # Prefer local recommendations from 'Halloween Dress' and expose via /garment_templates
-        for p in sorted(GARMENT_TEMPLATES_DIR.iterdir()):
-            if p.is_file() and p.suffix.lower() in exts:
-                items.append({"filename": p.name, "url": f"/garment_templates/{p.name}"})
+        if GARMENT_TEMPLATES_DIR.exists():
+            for p in sorted(GARMENT_TEMPLATES_DIR.iterdir()):
+                if p.is_file() and p.suffix.lower() in exts:
+                    items.append({"filename": p.name, "url": f"/garment_templates/{p.name}"})
         # Fallback: also include any files from garment_input for compatibility
-        for p in sorted(GARMENT_INPUT_DIR.iterdir()):
-            if p.is_file() and p.suffix.lower() in exts:
-                items.append({"filename": p.name, "url": f"/garment_input/{p.name}"})
+        if GARMENT_INPUT_DIR.exists():
+            for p in sorted(GARMENT_INPUT_DIR.iterdir()):
+                if p.is_file() and p.suffix.lower() in exts:
+                    items.append({"filename": p.name, "url": f"/garment_input/{p.name}"})
     
     return {"garments": items}
 
@@ -110,18 +126,29 @@ def garment_list(authorization: Optional[str] = None):
 def preview_garment(filename: str, authorization: Optional[str] = None):
     # _auth(authorization)
     
-    # Try to get from MongoDB first
-    doc = garments_collection.find_one({"filename": filename})
-    if doc and "image_data" in doc:
-        image_data = base64.b64decode(doc["image_data"])
-        content_type = doc.get("content_type", "image/webp")
-        return Response(content=image_data, media_type=content_type)
+    # Try to get from MongoDB first if available
+    if garments_collection is not None:
+        try:
+            doc = garments_collection.find_one({"filename": filename})
+            if doc and "image_data" in doc:
+                image_data = base64.b64decode(doc["image_data"])
+                content_type = doc.get("content_type", "image/webp")
+                return Response(content=image_data, media_type=content_type)
+        except Exception as e:
+            print(f"Error reading from MongoDB: {e}")
     
-    # Fallback to file system
-    file_path = GARMENT_OUTPUT_DIR / filename
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(file_path, media_type="image/webp")
+    # Fallback to file system - check multiple locations
+    possible_paths = [
+        GARMENT_OUTPUT_DIR / filename,
+        GARMENT_TEMPLATES_DIR / filename,
+        GARMENT_INPUT_DIR / filename
+    ]
+    
+    for file_path in possible_paths:
+        if file_path.exists():
+            return FileResponse(file_path, media_type="image/webp")
+    
+    raise HTTPException(status_code=404, detail="File not found")
 
 
 @app.get("/download/garment/{filename}")
