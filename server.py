@@ -59,7 +59,7 @@ THEMES = [
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "services": {"halloween": True, "garment": True}}
+    return {"status": "healthy", "services": {"halloween": True, "garment": True}, "version": "2.0"}
 
 
 @app.get("/themes")
