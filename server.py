@@ -1,14 +1,23 @@
 import os
+import base64
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pymongo import MongoClient
 
 
 API_TOKEN = os.getenv("API_TOKEN", "logicgo@123")
+MONGODB_URI = "mongodb+srv://harilogicgo_db_user:g6Zz4M2xWpr3B2VM@cluster0.bnzjt7f.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+# MongoDB connection
+client = MongoClient(MONGODB_URI)
+db = client.halloween_db
+garments_collection = db.garments
+
 GARMENT_INPUT_DIR = Path("garment_input")
 GARMENT_TEMPLATES_DIR = Path("Halloween Dress")  # local recommendations folder
 GARMENT_OUTPUT_DIR = Path("garment_output")
@@ -73,22 +82,42 @@ def themes(authorization: Optional[str] = None):
 def garment_list(authorization: Optional[str] = None):
     # Temporarily disable auth for testing
     # _auth(authorization)
-    exts = {".png", ".jpg", ".jpeg", ".webp"}
+    
+    # Get garments from MongoDB
     items = []
-    # Prefer local recommendations from 'Halloween Dress' and expose via /garment_templates
-    for p in sorted(GARMENT_TEMPLATES_DIR.iterdir()):
-        if p.is_file() and p.suffix.lower() in exts:
-            items.append({"filename": p.name, "url": f"/garment_templates/{p.name}"})
-    # Fallback: also include any files from garment_input for compatibility
-    for p in sorted(GARMENT_INPUT_DIR.iterdir()):
-        if p.is_file() and p.suffix.lower() in exts:
-            items.append({"filename": p.name, "url": f"/garment_input/{p.name}"})
+    for doc in garments_collection.find({}, {"filename": 1, "url": 1}):
+        items.append({
+            "filename": doc["filename"],
+            "url": doc["url"]
+        })
+    
+    # If no items in MongoDB, fallback to local files
+    if not items:
+        exts = {".png", ".jpg", ".jpeg", ".webp"}
+        # Prefer local recommendations from 'Halloween Dress' and expose via /garment_templates
+        for p in sorted(GARMENT_TEMPLATES_DIR.iterdir()):
+            if p.is_file() and p.suffix.lower() in exts:
+                items.append({"filename": p.name, "url": f"/garment_templates/{p.name}"})
+        # Fallback: also include any files from garment_input for compatibility
+        for p in sorted(GARMENT_INPUT_DIR.iterdir()):
+            if p.is_file() and p.suffix.lower() in exts:
+                items.append({"filename": p.name, "url": f"/garment_input/{p.name}"})
+    
     return {"garments": items}
 
 
 @app.get("/preview/garment/{filename}")
 def preview_garment(filename: str, authorization: Optional[str] = None):
     # _auth(authorization)
+    
+    # Try to get from MongoDB first
+    doc = garments_collection.find_one({"filename": filename})
+    if doc and "image_data" in doc:
+        image_data = base64.b64decode(doc["image_data"])
+        content_type = doc.get("content_type", "image/webp")
+        return Response(content=image_data, media_type=content_type)
+    
+    # Fallback to file system
     file_path = GARMENT_OUTPUT_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
